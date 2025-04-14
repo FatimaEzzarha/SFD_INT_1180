@@ -1,0 +1,176 @@
+<mvc:View
+    controllerName="sfdintcr1180.controller.MainView"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:layout="sap.ui.layout.form"
+    displayBlock="true"
+>
+    <Page title="{i18n>title}">
+        <content>
+            <layout:SimpleForm
+                id="formHeader"
+                editable="true"
+                layout="ResponsiveGridLayout"
+                labelSpanXL="3"
+                labelSpanL="3"
+                labelSpanM="4"
+                labelSpanS="12"
+                adjustLabelSpan="false"
+                emptySpanXL="4"
+                emptySpanL="4"
+                emptySpanM="0"
+                emptySpanS="0"
+                columnsXL="2"
+                columnsL="2"
+                columnsM="2"
+                class="sapUiSmallMargin"
+            >
+                <Label text="{i18n>labelPointVente}" />
+                <Input
+                    id="inputPointVente"
+                    showValueHelp="true"
+                    valueHelpOnly="true"
+                    valueHelpRequest="onValueHelpPointVente"
+                />
+
+                <Label text="{i18n>labelDateVente}" />
+                <DatePicker
+                    id="inputDateVente"
+                    displayFormat="dd/MM/yyyy"
+                    change="onChampChange"
+                />
+
+                <Label text="{i18n>labelDevise}" />
+                <Input
+                    id="inputDevise"
+                    value="EUR"
+                    editable="false"
+                    liveChange="onChampChange"
+                />
+
+                <Label text="{i18n>labelNumTransaction}" />
+                <Input
+                    id="inputNumTransaction"
+                    value="Auto"
+                    editable="false"
+                    liveChange="onChampChange"
+                />
+
+                <Label text="{i18n>labelTypeTransaction}" />
+                <Input
+                    id="inputTypeTransaction"
+                    value="ZTOM"
+                    editable="false"
+                    liveChange="onChampChange"
+                />
+
+                <Label text="{i18n>labelNumCaisse}" />
+                <Input
+                    id="inputNumCaisse"
+                    value="Auto"
+                    editable="false"
+                    liveChange="onChampChange"
+                />
+
+                <Label text="{i18n>labelUtilisateur}" />
+                <Input
+                    id="inputUtilisateur"
+                    value="{/utilisateur}"
+                    editable="false"
+                    liveChange="onChampChange"
+                />
+
+                <Label text="{i18n>labelDebut}" />
+                <Input
+                    id="inputDebut"
+                    value="{path: '/debutTraitement', type: 'sap.ui.model.type.DateTime', formatOptions: { pattern: 'dd/MM/yyyy HH:mm:ss' }}"
+                    editable="false"
+                    liveChange="onChampChange"
+                />
+
+                <Label text="{i18n>labelFin}" />
+                <Input
+                    id="inputFin"
+                    value="{path: '/finTraitement', type: 'sap.ui.model.type.DateTime', formatOptions: { pattern: 'dd/MM/yyyy HH:mm:ss' }}"
+                    editable="false"
+                />
+            </layout:SimpleForm>
+
+            <Table
+                id="tableLignes"
+                items="{/lignes}"
+                class="sapUiSmallMarginTop"
+            >
+                <columns>
+                    <Column>
+                        <Text text="Code du moyen de paiement" />
+                    </Column>
+                    <Column>
+                        <Text text="Libellé Moyen de paiement" />
+                    </Column>
+                    <Column>
+                        <Text text="Montants réels" />
+                    </Column>
+                </columns>
+                <items>
+                    <ColumnListItem>
+                        <cells>
+                            <Text text="{codeTransac}" />
+                            <Text text="{libelleTransac}" />
+                            <Input
+                                value="{montant}"
+                                type="Number"
+                                liveChange="onMontantChange"
+                                valueLiveUpdate="true"
+                                valueState="{= ${montant} !== '' ? 'None' : 'Error' }"
+                            />
+                        </cells>
+                    </ColumnListItem>
+                </items>
+            </Table>
+
+            <HBox
+                justifyContent="End"
+                class="sapUiSmallMarginTop"
+            >
+                <Text
+                    text="{i18n>labelSolde}"
+                    class="sapUiSmallMarginEnd sapUiSmallMarginTop"
+                />
+                <Text
+                    text="{/solde}"
+                    class="sapUiSmallMarginTop"
+                />
+            </HBox>
+
+            <HBox
+                class="sapUiSmallMarginTop"
+                justifyContent="End"
+            >
+                <Button
+                    text="{i18n>btnValider}"
+                    type="Emphasized"
+                    class="sapUiTinyMarginEnd"
+                    enabled="{/isFormValid}"
+                    press="onValider"
+                />
+                <Button
+                    text="{i18n>btnExporter}"
+                    class="sapUiTinyMarginEnd"
+                    press="onExporter"
+                    enabled="{/isExportEnabled}"
+                />
+                <Button
+                    text="{i18n>btnNouveau}"
+                    class="sapUiTinyMarginEnd"
+                    press="onNouveau"
+                />
+                <Button
+                    text="{i18n>btnQuitter}"
+                    press="onQuitter"
+                />
+            </HBox>
+        </content>
+    </Page>
+</mvc:View>
