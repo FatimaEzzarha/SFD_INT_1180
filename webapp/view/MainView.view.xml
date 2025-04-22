@@ -52,7 +52,6 @@
                 <Label text="{i18n>labelNumTransaction}" />
                 <Input
                     id="inputNumTransaction"
-                    value="Auto"
                     editable="false"
                     liveChange="onChampChange"
                 />
@@ -68,7 +67,7 @@
                 <Label text="{i18n>labelNumCaisse}" />
                 <Input
                     id="inputNumCaisse"
-                    value="Auto"
+                    value="999"
                     editable="false"
                     liveChange="onChampChange"
                 />
@@ -97,52 +96,48 @@
                 />
             </layout:SimpleForm>
 
-            <Table
-                id="tableLignes"
-                items="{/lignes}"
+            <ScrollContainer
+                height="300px"
+                vertical="true"
+                horizontal="false"
                 class="sapUiSmallMarginTop"
             >
-                <columns>
-                    <Column>
-                        <Text text="Code du moyen de paiement" />
-                    </Column>
-                    <Column>
-                        <Text text="Libellé Moyen de paiement" />
-                    </Column>
-                    <Column>
-                        <Text text="Montants réels" />
-                    </Column>
-                </columns>
-                <items>
-                    <ColumnListItem>
-                        <cells>
-                            <Text text="{codeTransac}" />
-                            <Text text="{libelleTransac}" />
-                            <Input
-                                value="{montant}"
-                                type="Number"
-                                liveChange="onMontantChange"
-                                valueLiveUpdate="true"
-                                valueState="{= ${montant} !== '' ? 'None' : 'Error' }"
-                            />
-                        </cells>
-                    </ColumnListItem>
-                </items>
-            </Table>
+                <Table
+                    id="tableLignes"
+                    items="{/lignes}"
+                    sticky="ColumnHeaders"
+                  
+                >
+                    <columns>
+                        <Column>
+                            <Text text="Code du moyen de paiement" />
+                        </Column>
+                        <Column>
+                            <Text text="Libellé Moyen de paiement" />
+                        </Column>
+                        <Column>
+                            <Text text="Montants réels" />
+                        </Column>
+                    </columns>
+                    <items>
+                        <ColumnListItem>
+                            <cells>
+                                <Text text="{codeTransac}" />
+                                <Text text="{libelleTransac}" />
+                                <Input
+                                    value="{montant}"
+                                    type="Number"
+                                    liveChange="onMontantChange"
+                                    valueLiveUpdate="true"
+                                    valueState="{= ${montant} !== '' ? 'None' : 'Error' }"
+                                />
+                            </cells>
+                        </ColumnListItem>
+                    </items>
+                </Table>
+            </ScrollContainer>
 
-            <HBox
-                justifyContent="End"
-                class="sapUiSmallMarginTop"
-            >
-                <Text
-                    text="{i18n>labelSolde}"
-                    class="sapUiSmallMarginEnd sapUiSmallMarginTop"
-                />
-                <Text
-                    text="{/solde}"
-                    class="sapUiSmallMarginTop"
-                />
-            </HBox>
+          
 
             <HBox
                 class="sapUiSmallMarginTop"

@@ -25,12 +25,12 @@ sap.ui.define([
 
             oModel.setDefaultBindingMode(sap.ui.model.BindingMode.TwoWay);
             this.getView().setModel(oModel);
+            this.chargerMoyensPaiement();
         },
 
         onValueHelpPointVente: function () {
             const oView = this.getView();
-            const oModel = this.getOwnerComponent().getModel(); // OData model déjà configuré
-            debugger;
+            const oModel = this.getOwnerComponent().getModel(); 
         
             // Crée le SelectDialog uniquement une fois
             if (!this._oPointVenteDialog) {
@@ -51,15 +51,17 @@ sap.ui.define([
                         }
                     },
                     search: function (oEvent) {
+                        debugger;
                         const sValue = oEvent.getParameter("value");
                         const oFilter = new sap.ui.model.Filter("RETAILSTOREID", sap.ui.model.FilterOperator.Contains, sValue);
-                        this.getBinding("items").filter([oFilter]);
+                        oEvent.getSource().getBinding("items").filter([oFilter]);
                     },
                     liveChange: function (oEvent) {
                         const sValue = oEvent.getParameter("value");
                         const oFilter = new sap.ui.model.Filter("RETAILSTOREID", sap.ui.model.FilterOperator.Contains, sValue);
-                        this.getBinding("items").filter([oFilter]);
+                        oEvent.getSource().getBinding("items").filter([oFilter]);
                     }
+                    
                 });
         
                 this._oPointVenteDialog.setModel(oModel); // Bind le modèle OData
@@ -67,6 +69,52 @@ sap.ui.define([
         
             this._oPointVenteDialog.open();
         },
+
+        calculerNumTransaction: function () {
+            const oView = this.getView();
+            const oModel = oView.getModel();
+
+            const retailStore = oView.byId("inputPointVente").getValue();
+            const workstationId = oView.byId("inputNumCaisse").getValue();
+            const dateVente = oView.byId("inputDateVente").getDateValue();
+
+            if (!retailStore || !workstationId || !dateVente) {
+                return;
+            }
+
+            const right4Retail = retailStore.slice(-4);
+            const year = String(dateVente.getFullYear()).slice(-2);
+
+            const startOfYear = new Date(dateVente.getFullYear(), 0, 0);
+            const diff = dateVente - startOfYear;
+            const oneDay = 1000 * 60 * 60 * 24;
+            const dayOfYear = Math.floor(diff / oneDay);
+
+            const transNumber = `${right4Retail}${workstationId}${year}${dayOfYear.toString().padStart(3, '0')}`;
+            oView.byId("inputNumTransaction").setValue(transNumber);
+        },
+
+        chargerMoyensPaiement: function () {
+            const oView = this.getView();
+            const oModel = oView.getModel();
+            const oODataModel = this.getOwnerComponent().getModel(); // OData Model (backend)
+
+            oODataModel.read("/TenderTypeVHSet", {
+                success: function (oData) {
+                    const aLignes = oData.results.map(item => ({
+                        codeTransac: item.TENDERTYPECODE,
+                        libelleTransac: item.DESCRIPTION,
+                        montant: "0.00"
+                    }));
+
+                    oModel.setProperty("/lignes", aLignes);
+                },
+                error: function () {
+                    MessageToast.show("Erreur lors du chargement des moyens de paiement.");
+                }
+            });
+        },
+
 
         onChampChange: function () {
             this.mettreAJourValidation();
@@ -76,16 +124,13 @@ sap.ui.define([
         validerChampsRequis: function () {
             const oView = this.getView();
             let isValid = true;
-        
+
             // Champs requis
-            const inputPointVente = oView.byId("inputPointVente");
             const inputDateVente = oView.byId("inputDateVente");
-        
-            const pointVente = inputPointVente.getValue();
             const dateVente = inputDateVente.getDateValue();
-        
-          
-        
+
+
+
             // ✅ Validation de la date
             if (!dateVente) {
                 inputDateVente.setValueState("Error");
@@ -94,11 +139,11 @@ sap.ui.define([
             } else {
                 inputDateVente.setValueState("None");
             }
-        
+
             return isValid;
         },
-        
-        
+
+
 
         mettreAJourValidation: function () {
             const isValid = this.validerChampsRequis();
@@ -113,13 +158,97 @@ sap.ui.define([
                 title: "Confirmation de validation",
                 onClose: function (oAction) {
                     if (oAction === MessageBox.Action.OK) {
+                        that.calculerNumTransaction();
                         oModel.setProperty("/finTraitement", new Date());
+                        that.onEnvoyerVersBackend();
                         oModel.setProperty("/isExportEnabled", true);
+
                         MessageToast.show("Transaction envoyée à CAR avec succès.");
                     }
                 }
             });
         },
+
+        onEnvoyerVersBackend: function () {
+            const oView = this.getView();
+            const oModel = oView.getModel();
+            const oODataModel = this.getOwnerComponent().getModel(); // Modèle OData
+        
+            const debut = oModel.getProperty("/debutTraitement");
+            const fin = oModel.getProperty("/finTraitement");
+        
+            const payload = {
+                RETAILSTOREID: oView.byId("inputPointVente").getValue(),
+                BUSINESSDAYDATE : this._formatDate(oView.byId("inputDateVente").getDateValue()),
+                TRANSNUMBER: oView.byId("inputNumTransaction").getValue(),
+                TRANSTYPECODE: oView.byId("inputTypeTransaction")?.getValue() || "",
+                WORKSTATIONID: oView.byId("inputNumCaisse").getValue(),
+                TRANSCURRENCY: oView.byId("inputDevise")?.getValue() || "",
+                PROCESSUSER: oModel.getProperty("/utilisateur"),
+                BEGINTIMESTAMP: this._formatTimestamp(debut),
+                ENDTIMESTAMP: this._formatTimestamp(fin),
+                HDRTOITEMNAV: oModel.getProperty("/lignes").map(item => ({
+                    TENDERTYPECODE: item.codeTransac,
+                    TENDERACTUALAMOUNT: item.montant
+                })),
+                ToMessages: []
+            };
+        
+            oODataModel.create("/IdocHeaderSet", payload, {
+                success: function (oData) {
+                    if (oData && oData.ToMessages && oData.ToMessages.results) {
+                        var aMessages = oData.ToMessages.results;
+                        var errorMessage = "";
+                        var successMessage = "";
+                        var hasError = false;
+            
+                        aMessages.forEach(function (oMessage) {
+                            if (oMessage.type === 'E') {
+                                errorMessage += oMessage.message + "\n";
+                                hasError = true;
+                            } else {
+                                successMessage += oMessage.message ;
+                            }
+                        });
+            
+                        if (hasError) {
+                            MessageBox.error(errorMessage || "Erreur inconnue lors de l'envoi.");
+                        } else {
+                            MessageBox.success(successMessage );
+                            oModel.setProperty("/isFormValid", false);
+                            oModel.setProperty("/isExportEnabled", true);
+
+                        }
+                    } else {
+                        MessageToast.show("Formulaire envoyé, mais aucun message de retour.");
+                    }
+                },
+                error: function () {
+                    MessageBox.error("Erreur lors de l’envoi du formulaire.");
+                }
+            });
+
+        },
+        
+        _formatDate: function (oDate) {
+            if (!oDate) return "";
+            const yyyy = oDate.getFullYear();
+            const mm = String(oDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(oDate.getDate()).padStart(2, '0');
+            return `${yyyy}${mm}${dd}`;
+        },
+        
+        _formatTimestamp: function (oDate) {
+            if (!oDate) return "";
+            const yyyy = oDate.getFullYear();
+            const mm = String(oDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(oDate.getDate()).padStart(2, '0');
+            const hh = String(oDate.getHours()).padStart(2, '0');
+            const mi = String(oDate.getMinutes()).padStart(2, '0');
+            const ss = String(oDate.getSeconds()).padStart(2, '0');
+            return `${yyyy}${mm}${dd}${hh}${mi}${ss}`;
+        },
+        
 
         onNouveau: function () {
             const that = this;
@@ -129,14 +258,19 @@ sap.ui.define([
                 onClose: function (oAction) {
                     if (oAction === MessageBox.Action.OK) {
                         const oModel = that.getView().getModel();
-                        oModel.setProperty("/lignes", []);
+                        const aLignes = oModel.getProperty("/lignes") || [];
+                        const aReset = aLignes.map(ligne => ({
+                            ...ligne,
+                            montant: "0.00" // On garde les codes/libellés, on remet juste le montant
+                        }));
+                        oModel.setProperty("/lignes", aReset);
                         oModel.setProperty("/selectedIndices", []);
                         oModel.setProperty("/finTraitement", null);
                         oModel.setProperty("/debutTraitement", new Date());
                         oModel.setProperty("/isFormValid", false);
                         oModel.setProperty("/isExportEnabled", false);
 
-                        ["inputPointVente", "inputDateVente", "inputNumCaisse", "inputRefTicket"].forEach(id => {
+                        ["inputPointVente", "inputDateVente",  "inputNumTransaction"].forEach(id => {
                             const oField = that.getView().byId(id);
                             if (oField?.setValue) {
                                 oField.setValue("");
@@ -200,10 +334,8 @@ sap.ui.define([
             const aRows = oData.lignes.map((ligne) => ({
                 pointVente: pointVente,
                 numCaisse: numCaisse,
-                refTicket: oView.byId("inputRefTicket").getValue(),
                 dateVente: `${dd}/${mm}/${yyyy}`,
                 numTransaction: numTransaction,
-                posteId: ligne.posteId,
                 codeTransac: ligne.codeTransac,
                 libelleTransac: ligne.libelleTransac,
                 montant: ligne.montant,
@@ -218,10 +350,9 @@ sap.ui.define([
                 { label: "Réf. Ticket Initial", property: "refTicket" },
                 { label: "Date de vente", property: "dateVente" },
                 { label: "Numéro de transaction", property: "numTransaction" },
-                { label: "n° de Poste", property: "posteId" },
-                { label: "Code Transaction Financière", property: "codeTransac" },
-                { label: "Libellé Transaction financière", property: "libelleTransac" },
-                { label: "Montants", property: "montant" },
+                { label: "Code Moyen de Paiement", property: "codeTransac" },
+                { label: "Libellé Moyen de Paiement", property: "libelleTransac" },
+                { label: "Montants Réels", property: "montant" },
                 { label: "Utilisateur", property: "utilisateur" },
                 { label: "Début du traitement", property: "debutTraitement" },
                 { label: "Fin du traitement", property: "finTraitement" }
