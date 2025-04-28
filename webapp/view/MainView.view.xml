@@ -127,7 +127,7 @@
                                 <Input
                                     value="{montant}"
                                     type="Number"
-                                    liveChange="onMontantChange"
+                                    liveChange="onChampChange"
                                     valueLiveUpdate="true"
                                     valueState="{= ${montant} !== '' ? 'None' : 'Error' }"
                                 />

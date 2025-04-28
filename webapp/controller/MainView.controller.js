@@ -28,10 +28,12 @@ sap.ui.define([
             this.chargerMoyensPaiement();
         },
 
+        //*****************************************************    Value Help      ******************************************************************************************** 
+
         onValueHelpPointVente: function () {
             const oView = this.getView();
-            const oModel = this.getOwnerComponent().getModel(); 
-        
+            const oModel = this.getOwnerComponent().getModel();
+
             // Crée le SelectDialog uniquement une fois
             if (!this._oPointVenteDialog) {
                 this._oPointVenteDialog = new sap.m.SelectDialog({
@@ -61,14 +63,111 @@ sap.ui.define([
                         const oFilter = new sap.ui.model.Filter("RETAILSTOREID", sap.ui.model.FilterOperator.Contains, sValue);
                         oEvent.getSource().getBinding("items").filter([oFilter]);
                     }
-                    
+
                 });
-        
+
                 this._oPointVenteDialog.setModel(oModel); // Bind le modèle OData
             }
-        
+
             this._oPointVenteDialog.open();
         },
+
+        //*****************************************************   Chargement des codes    ******************************************************************************************** 
+
+        chargerMoyensPaiement: function () {
+            const oView = this.getView();
+            const oModel = oView.getModel();
+            const oODataModel = this.getOwnerComponent().getModel(); // OData Model (backend)
+
+            oODataModel.read("/TenderTypeVHSet", {
+                success: function (oData) {
+                    const aLignes = oData.results.map(item => ({
+                        codeTransac: item.TENDERTYPECODE,
+                        libelleTransac: item.DESCRIPTION,
+                        montant: "0.00"
+                    }));
+
+                    oModel.setProperty("/lignes", aLignes);
+                },
+                error: function () {
+                    MessageToast.show("Erreur lors du chargement des moyens de paiement.");
+                }
+            });
+        },
+
+
+
+
+        //*****************************************************    Vérification des données     ******************************************************************************************** 
+
+        validerChampsRequis: function () {
+            const oView = this.getView();
+            const oModel = oView.getModel();
+            let isValid = true;
+
+            // 1. Vérification du Point de Vente
+            const inputPointVente = oView.byId("inputPointVente");
+            const pointVente = inputPointVente.getValue();
+            if (!pointVente) {
+                inputPointVente.setValueState("Error");
+                inputPointVente.setValueStateText("Veuillez sélectionner un point de vente.");
+                isValid = false;
+            } else {
+                inputPointVente.setValueState("None");
+            }
+
+            // 2. Vérification de la Date de Vente
+            const inputDateVente = oView.byId("inputDateVente");
+            const dateVente = inputDateVente.getDateValue();
+            if (!dateVente) {
+                inputDateVente.setValueState("Error");
+                inputDateVente.setValueStateText("Veuillez saisir une date de vente.");
+                isValid = false;
+            } else {
+                inputDateVente.setValueState("None");
+            }
+
+            // 3. Vérification au moins un montant > 0
+            const aLignes = oModel.getProperty("/lignes") || [];
+            const bMontantSaisi = aLignes.some(item => parseFloat(item.montant) > 0);
+            if (!bMontantSaisi) {
+                isValid = false;
+
+            }
+
+            return isValid;
+        },
+
+
+
+        mettreAJourValidation: function () {
+            const isValid = this.validerChampsRequis();
+            this.getView().getModel().setProperty("/isFormValid", isValid);
+        },
+
+        onChampChange: function () {
+            this.mettreAJourValidation();
+        },
+
+
+        //*****************************************************    Bouton  Valider      ******************************************************************************************** 
+        
+        onValider: function () {
+            const oModel = this.getView().getModel();
+            const that = this;
+
+            MessageBox.confirm("Souhaitez-vous valider et envoyer cette transaction à CAR ?", {
+                title: "Confirmation de validation",
+                onClose: function (oAction) {
+                    if (oAction === MessageBox.Action.OK) {
+                        that.calculerNumTransaction();
+                        oModel.setProperty("/finTraitement", new Date());
+                        that.onEnvoyerVersBackend();
+                    }
+                }
+            });
+        },
+
 
         calculerNumTransaction: function () {
             const oView = this.getView();
@@ -94,92 +193,17 @@ sap.ui.define([
             oView.byId("inputNumTransaction").setValue(transNumber);
         },
 
-        chargerMoyensPaiement: function () {
-            const oView = this.getView();
-            const oModel = oView.getModel();
-            const oODataModel = this.getOwnerComponent().getModel(); // OData Model (backend)
-
-            oODataModel.read("/TenderTypeVHSet", {
-                success: function (oData) {
-                    const aLignes = oData.results.map(item => ({
-                        codeTransac: item.TENDERTYPECODE,
-                        libelleTransac: item.DESCRIPTION,
-                        montant: "0.00"
-                    }));
-
-                    oModel.setProperty("/lignes", aLignes);
-                },
-                error: function () {
-                    MessageToast.show("Erreur lors du chargement des moyens de paiement.");
-                }
-            });
-        },
-
-
-        onChampChange: function () {
-            this.mettreAJourValidation();
-        },
-
-
-        validerChampsRequis: function () {
-            const oView = this.getView();
-            let isValid = true;
-
-            // Champs requis
-            const inputDateVente = oView.byId("inputDateVente");
-            const dateVente = inputDateVente.getDateValue();
-
-
-
-            // ✅ Validation de la date
-            if (!dateVente) {
-                inputDateVente.setValueState("Error");
-                inputDateVente.setValueStateText("Veuillez saisir une date de vente.");
-                isValid = false;
-            } else {
-                inputDateVente.setValueState("None");
-            }
-
-            return isValid;
-        },
-
-
-
-        mettreAJourValidation: function () {
-            const isValid = this.validerChampsRequis();
-            this.getView().getModel().setProperty("/isFormValid", isValid);
-        },
-
-        onValider: function () {
-            const oModel = this.getView().getModel();
-            const that = this;
-
-            MessageBox.confirm("Souhaitez-vous valider et envoyer cette transaction à CAR ?", {
-                title: "Confirmation de validation",
-                onClose: function (oAction) {
-                    if (oAction === MessageBox.Action.OK) {
-                        that.calculerNumTransaction();
-                        oModel.setProperty("/finTraitement", new Date());
-                        that.onEnvoyerVersBackend();
-                        oModel.setProperty("/isExportEnabled", true);
-
-                        MessageToast.show("Transaction envoyée à CAR avec succès.");
-                    }
-                }
-            });
-        },
-
         onEnvoyerVersBackend: function () {
             const oView = this.getView();
             const oModel = oView.getModel();
             const oODataModel = this.getOwnerComponent().getModel(); // Modèle OData
-        
+
             const debut = oModel.getProperty("/debutTraitement");
             const fin = oModel.getProperty("/finTraitement");
-        
+
             const payload = {
                 RETAILSTOREID: oView.byId("inputPointVente").getValue(),
-                BUSINESSDAYDATE : this._formatDate(oView.byId("inputDateVente").getDateValue()),
+                BUSINESSDAYDATE: this._formatDate(oView.byId("inputDateVente").getDateValue()),
                 TRANSNUMBER: oView.byId("inputNumTransaction").getValue(),
                 TRANSTYPECODE: oView.byId("inputTypeTransaction")?.getValue() || "",
                 WORKSTATIONID: oView.byId("inputNumCaisse").getValue(),
@@ -193,7 +217,7 @@ sap.ui.define([
                 })),
                 ToMessages: []
             };
-        
+
             oODataModel.create("/IdocHeaderSet", payload, {
                 success: function (oData) {
                     if (oData && oData.ToMessages && oData.ToMessages.results) {
@@ -201,20 +225,20 @@ sap.ui.define([
                         var errorMessage = "";
                         var successMessage = "";
                         var hasError = false;
-            
+
                         aMessages.forEach(function (oMessage) {
                             if (oMessage.type === 'E') {
                                 errorMessage += oMessage.message + "\n";
                                 hasError = true;
                             } else {
-                                successMessage += oMessage.message ;
+                                successMessage += oMessage.message;
                             }
                         });
-            
+
                         if (hasError) {
                             MessageBox.error(errorMessage || "Erreur inconnue lors de l'envoi.");
                         } else {
-                            MessageBox.success(successMessage );
+                            MessageBox.success(successMessage);
                             oModel.setProperty("/isFormValid", false);
                             oModel.setProperty("/isExportEnabled", true);
 
@@ -229,7 +253,7 @@ sap.ui.define([
             });
 
         },
-        
+
         _formatDate: function (oDate) {
             if (!oDate) return "";
             const yyyy = oDate.getFullYear();
@@ -237,7 +261,7 @@ sap.ui.define([
             const dd = String(oDate.getDate()).padStart(2, '0');
             return `${yyyy}${mm}${dd}`;
         },
-        
+
         _formatTimestamp: function (oDate) {
             if (!oDate) return "";
             const yyyy = oDate.getFullYear();
@@ -248,8 +272,9 @@ sap.ui.define([
             const ss = String(oDate.getSeconds()).padStart(2, '0');
             return `${yyyy}${mm}${dd}${hh}${mi}${ss}`;
         },
-        
 
+
+        //*****************************************************    Bouton  Nouveau    ******************************************************************************************** 
         onNouveau: function () {
             const that = this;
 
@@ -261,7 +286,7 @@ sap.ui.define([
                         const aLignes = oModel.getProperty("/lignes") || [];
                         const aReset = aLignes.map(ligne => ({
                             ...ligne,
-                            montant: "0.00" // On garde les codes/libellés, on remet juste le montant
+                            montant: "0.00"
                         }));
                         oModel.setProperty("/lignes", aReset);
                         oModel.setProperty("/selectedIndices", []);
@@ -270,7 +295,7 @@ sap.ui.define([
                         oModel.setProperty("/isFormValid", false);
                         oModel.setProperty("/isExportEnabled", false);
 
-                        ["inputPointVente", "inputDateVente",  "inputNumTransaction"].forEach(id => {
+                        ["inputPointVente", "inputDateVente", "inputNumTransaction"].forEach(id => {
                             const oField = that.getView().byId(id);
                             if (oField?.setValue) {
                                 oField.setValue("");
@@ -284,6 +309,10 @@ sap.ui.define([
             });
         },
 
+
+
+        //*****************************************************    Bouton  Quitter      ******************************************************************************************** 
+
         onQuitter: function () {
             MessageBox.confirm("Souhaitez-vous quitter le formulaire ?", {
                 title: "Confirmation de sortie",
@@ -295,6 +324,11 @@ sap.ui.define([
                 }
             });
         },
+
+
+
+
+        //*****************************************************    Bouton  Exporter     ******************************************************************************************** 
 
         onExporter: function () {
             const that = this;
@@ -323,7 +357,7 @@ sap.ui.define([
             const yyyy = dateVente.getFullYear();
             const dateFormatted = `${dd}${mm}${yyyy}`;
 
-            const fileName = `Reclassement_${numCaisse}_${numTransaction}_SGM_${pointVente}_${dateFormatted}.xlsx`;
+            const fileName = `Export_Cloture_SGM_${pointVente}_${dateFormatted}.xlsx`;
 
             const formatDateTime = function (oDate) {
                 if (!oDate) return "";
@@ -347,10 +381,9 @@ sap.ui.define([
             const aCols = [
                 { label: "Point de vente", property: "pointVente" },
                 { label: "Numéro de caisse", property: "numCaisse" },
-                { label: "Réf. Ticket Initial", property: "refTicket" },
                 { label: "Date de vente", property: "dateVente" },
                 { label: "Numéro de transaction", property: "numTransaction" },
-                { label: "Code Moyen de Paiement", property: "codeTransac" },
+                { label: "Code du moyen de paiement", property: "codeTransac" },
                 { label: "Libellé Moyen de Paiement", property: "libelleTransac" },
                 { label: "Montants Réels", property: "montant" },
                 { label: "Utilisateur", property: "utilisateur" },
