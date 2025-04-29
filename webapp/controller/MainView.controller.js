@@ -25,16 +25,15 @@ sap.ui.define([
 
             oModel.setDefaultBindingMode(sap.ui.model.BindingMode.TwoWay);
             this.getView().setModel(oModel);
-            this.chargerMoyensPaiement();
+            this.loadTenderTypes();
         },
 
         //*****************************************************    Value Help      ******************************************************************************************** 
 
-        onValueHelpPointVente: function () {
+        onValueHelpRetailStore: function () {
             const oView = this.getView();
             const oModel = this.getOwnerComponent().getModel();
 
-            // Crée le SelectDialog uniquement une fois
             if (!this._oPointVenteDialog) {
                 this._oPointVenteDialog = new sap.m.SelectDialog({
                     title: "Sélectionner un point de vente",
@@ -49,7 +48,7 @@ sap.ui.define([
                         if (oSelected) {
                             const sSelected = oSelected.getTitle();
                             oView.byId("inputPointVente").setValue(sSelected);
-                            this.mettreAJourValidation();
+                            this.updateValidationState();
                         }
                     },
                     search: function (oEvent) {
@@ -66,18 +65,18 @@ sap.ui.define([
 
                 });
 
-                this._oPointVenteDialog.setModel(oModel); // Bind le modèle OData
+                this._oPointVenteDialog.setModel(oModel); 
             }
 
             this._oPointVenteDialog.open();
         },
 
-        //*****************************************************   Chargement des codes    ******************************************************************************************** 
+        //*****************************************************   Load Tenders    ******************************************************************************************** 
 
-        chargerMoyensPaiement: function () {
+        loadTenderTypes: function () {
             const oView = this.getView();
             const oModel = oView.getModel();
-            const oODataModel = this.getOwnerComponent().getModel(); // OData Model (backend)
+            const oODataModel = this.getOwnerComponent().getModel();
 
             oODataModel.read("/TenderTypeVHSet", {
                 success: function (oData) {
@@ -98,14 +97,14 @@ sap.ui.define([
 
 
 
-        //*****************************************************    Vérification des données     ******************************************************************************************** 
+        //*****************************************************    Field validation    ******************************************************************************************** 
 
-        validerChampsRequis: function () {
+        validateRequiredFields: function () {
             const oView = this.getView();
             const oModel = oView.getModel();
             let isValid = true;
 
-            // 1. Vérification du Point de Vente
+            
             const inputPointVente = oView.byId("inputPointVente");
             const pointVente = inputPointVente.getValue();
             if (!pointVente) {
@@ -116,7 +115,7 @@ sap.ui.define([
                 inputPointVente.setValueState("None");
             }
 
-            // 2. Vérification de la Date de Vente
+            
             const inputDateVente = oView.byId("inputDateVente");
             const dateVente = inputDateVente.getDateValue();
             if (!dateVente) {
@@ -140,19 +139,19 @@ sap.ui.define([
 
 
 
-        mettreAJourValidation: function () {
-            const isValid = this.validerChampsRequis();
+        updateValidationState: function () {
+            const isValid = this.validateRequiredFields();
             this.getView().getModel().setProperty("/isFormValid", isValid);
         },
 
-        onChampChange: function () {
-            this.mettreAJourValidation();
+        onFieldChange: function () {
+            this.updateValidationState();
         },
 
 
-        //*****************************************************    Bouton  Valider      ******************************************************************************************** 
+        //*****************************************************    Submit Button      ******************************************************************************************** 
         
-        onValider: function () {
+        onSubmit: function () {
             const oModel = this.getView().getModel();
             const that = this;
 
@@ -160,16 +159,16 @@ sap.ui.define([
                 title: "Confirmation de validation",
                 onClose: function (oAction) {
                     if (oAction === MessageBox.Action.OK) {
-                        that.calculerNumTransaction();
+                        that.generateTransactionNumber();
                         oModel.setProperty("/finTraitement", new Date());
-                        that.onEnvoyerVersBackend();
+                        that.sendToBackend();
                     }
                 }
             });
         },
 
 
-        calculerNumTransaction: function () {
+        generateTransactionNumber: function () {
             const oView = this.getView();
             const oModel = oView.getModel();
 
@@ -193,7 +192,7 @@ sap.ui.define([
             oView.byId("inputNumTransaction").setValue(transNumber);
         },
 
-        onEnvoyerVersBackend: function () {
+        sendToBackend: function () {
             const oView = this.getView();
             const oModel = oView.getModel();
             const oODataModel = this.getOwnerComponent().getModel(); // Modèle OData
@@ -274,8 +273,8 @@ sap.ui.define([
         },
 
 
-        //*****************************************************    Bouton  Nouveau    ******************************************************************************************** 
-        onNouveau: function () {
+        //*****************************************************    Reset Button    ******************************************************************************************** 
+        onResetForm: function () {
             const that = this;
 
             MessageBox.confirm("Souhaitez-vous réinitialiser le formulaire ?", {
@@ -311,9 +310,9 @@ sap.ui.define([
 
 
 
-        //*****************************************************    Bouton  Quitter      ******************************************************************************************** 
+        //*****************************************************    Exit Button      ******************************************************************************************** 
 
-        onQuitter: function () {
+        onExit: function () {
             MessageBox.confirm("Souhaitez-vous quitter le formulaire ?", {
                 title: "Confirmation de sortie",
                 onClose: function (oAction) {
@@ -328,21 +327,21 @@ sap.ui.define([
 
 
 
-        //*****************************************************    Bouton  Exporter     ******************************************************************************************** 
+        //*****************************************************    Export Button     ******************************************************************************************** 
 
-        onExporter: function () {
+        onExportToExcel: function () {
             const that = this;
             MessageBox.confirm("Souhaitez-vous exporter les données au format Excel ?", {
                 title: "Confirmation d’export",
                 onClose: function (oAction) {
                     if (oAction === MessageBox.Action.OK) {
-                        that._exporterExcel();
+                        that._buildExcelFile();
                     }
                 }
             });
         },
 
-        _exporterExcel: function () {
+        _buildExcelFile: function () {
             const oView = this.getView();
             const oModel = oView.getModel();
             const oData = oModel.getData();

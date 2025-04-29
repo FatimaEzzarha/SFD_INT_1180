@@ -31,14 +31,14 @@
                     id="inputPointVente"
                     showValueHelp="true"
                     valueHelpOnly="true"
-                    valueHelpRequest="onValueHelpPointVente"
+                    valueHelpRequest="onValueHelpRetailStore"
                 />
 
                 <Label text="{i18n>labelDateVente}" />
                 <DatePicker
                     id="inputDateVente"
                     displayFormat="dd/MM/yyyy"
-                    change="onChampChange"
+                    change="onFieldChange"
                 />
 
                 <Label text="{i18n>labelDevise}" />
@@ -46,14 +46,14 @@
                     id="inputDevise"
                     value="EUR"
                     editable="false"
-                    liveChange="onChampChange"
+                    liveChange="onFieldChange"
                 />
 
                 <Label text="{i18n>labelNumTransaction}" />
                 <Input
                     id="inputNumTransaction"
                     editable="false"
-                    liveChange="onChampChange"
+                    liveChange="onFieldChange"
                 />
 
                 <Label text="{i18n>labelTypeTransaction}" />
@@ -61,7 +61,7 @@
                     id="inputTypeTransaction"
                     value="ZTOM"
                     editable="false"
-                    liveChange="onChampChange"
+                    liveChange="onFieldChange"
                 />
 
                 <Label text="{i18n>labelNumCaisse}" />
@@ -69,7 +69,7 @@
                     id="inputNumCaisse"
                     value="999"
                     editable="false"
-                    liveChange="onChampChange"
+                    liveChange="onFieldChange"
                 />
 
                 <Label text="{i18n>labelUtilisateur}" />
@@ -77,7 +77,7 @@
                     id="inputUtilisateur"
                     value="{/utilisateur}"
                     editable="false"
-                    liveChange="onChampChange"
+                    liveChange="onFieldChange"
                 />
 
                 <Label text="{i18n>labelDebut}" />
@@ -85,7 +85,7 @@
                     id="inputDebut"
                     value="{path: '/debutTraitement', type: 'sap.ui.model.type.DateTime', formatOptions: { pattern: 'dd/MM/yyyy HH:mm:ss' }}"
                     editable="false"
-                    liveChange="onChampChange"
+                    liveChange="onFieldChange"
                 />
 
                 <Label text="{i18n>labelFin}" />
@@ -127,7 +127,7 @@
                                 <Input
                                     value="{montant}"
                                     type="Number"
-                                    liveChange="onChampChange"
+                                    liveChange="onFieldChange"
                                     valueLiveUpdate="true"
                                     valueState="{= ${montant} !== '' ? 'None' : 'Error' }"
                                 />
@@ -148,22 +148,22 @@
                     type="Emphasized"
                     class="sapUiTinyMarginEnd"
                     enabled="{/isFormValid}"
-                    press="onValider"
+                    press="onSubmit"
                 />
                 <Button
                     text="{i18n>btnExporter}"
                     class="sapUiTinyMarginEnd"
-                    press="onExporter"
+                    press="onExportToExcel"
                     enabled="{/isExportEnabled}"
                 />
                 <Button
                     text="{i18n>btnNouveau}"
                     class="sapUiTinyMarginEnd"
-                    press="onNouveau"
+                    press="onResetForm"
                 />
                 <Button
                     text="{i18n>btnQuitter}"
-                    press="onQuitter"
+                    press="onExit"
                 />
             </HBox>
         </content>
