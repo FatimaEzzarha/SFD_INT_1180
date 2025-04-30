@@ -163,7 +163,7 @@
                 />
                 <Button
                     text="{i18n>btnQuitter}"
-                    press="onExit"
+                    press="onExitApp"
                 />
             </HBox>
         </content>

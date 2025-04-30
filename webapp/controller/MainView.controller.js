@@ -61,7 +61,7 @@ sap.ui.define([
                         const oSelected = oEvent.getParameter("selectedItem");
                         if (oSelected) {
                             const sSelected = oSelected.getTitle();
-                            oView.byId("inputPointV7ente").setValue(sSelected);
+                            oView.byId("inputPointVente").setValue(sSelected);
                             this.updateValidationState();
                         }
                     },
@@ -326,7 +326,7 @@ sap.ui.define([
 
         //*****************************************************    Exit Button      ******************************************************************************************** 
 
-        onExit: function () {
+        onExitApp: function () {
             MessageBox.confirm("Souhaitez-vous quitter le formulaire ?", {
                 title: "Confirmation de sortie",
                 onClose: function (oAction) {
