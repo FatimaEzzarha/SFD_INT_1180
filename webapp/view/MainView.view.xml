@@ -72,10 +72,10 @@
                     liveChange="onFieldChange"
                 />
 
-                <Label text="{i18n>labelUtilisateur}" />
+                <Label text="{i18n>labelUser}" />
                 <Input
-                    id="inputUtilisateur"
-                    value="{/utilisateur}"
+                    id="inputUser"
+                    value="{/user}"
                     editable="false"
                     liveChange="onFieldChange"
                 />

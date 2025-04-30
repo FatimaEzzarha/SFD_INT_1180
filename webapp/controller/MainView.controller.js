@@ -13,15 +13,29 @@ sap.ui.define([
                 lignes: [],
                 isFormValid: false,
                 isExportEnabled: false,
-                utilisateur: "",
+                user: "",
                 debutTraitement: new Date(),
                 finTraitement: null
             });
 
-            if (sap.ushell && sap.ushell.Container) {
-                const sUserId = sap.ushell.Container.getUser().getId();
-                oModel.setProperty("/utilisateur", sUserId);
-            }
+            sap.ui.require(["sap/ushell/Container"], function () {
+                sap.ushell.Container
+                    .getServiceAsync("UserInfo")
+                    .then(function (oUserInfo) {
+                        // ► API ≥ UI5 1.75 :
+                        oModel.setProperty("/user", oUserInfo.getId())
+                        // ► Par sécurité pour les versions plus anciennes :
+                        // console.log("User ID :", oUserInfo.getUser().getId());
+                    })
+                    .catch(function (err) {
+                        //console.error("UserInfo service KO :", err);
+                    });
+            });
+
+            // if (sap.ushell && sap.ushell.Container) {
+            //     const sUserId = sap.ushell.Container.getUser().getId();
+            //     oModel.setProperty("/user", sUserId);
+            // }
 
             oModel.setDefaultBindingMode(sap.ui.model.BindingMode.TwoWay);
             this.getView().setModel(oModel);
@@ -47,7 +61,7 @@ sap.ui.define([
                         const oSelected = oEvent.getParameter("selectedItem");
                         if (oSelected) {
                             const sSelected = oSelected.getTitle();
-                            oView.byId("inputPointVente").setValue(sSelected);
+                            oView.byId("inputPointV7ente").setValue(sSelected);
                             this.updateValidationState();
                         }
                     },
@@ -207,7 +221,7 @@ sap.ui.define([
                 TRANSTYPECODE: oView.byId("inputTypeTransaction")?.getValue() || "",
                 WORKSTATIONID: oView.byId("inputNumCaisse").getValue(),
                 TRANSCURRENCY: oView.byId("inputDevise")?.getValue() || "",
-                PROCESSUSER: oModel.getProperty("/utilisateur"),
+                PROCESSUSER: oModel.getProperty("/user"),
                 BEGINTIMESTAMP: this._formatTimestamp(debut),
                 ENDTIMESTAMP: this._formatTimestamp(fin),
                 HDRTOITEMNAV: oModel.getProperty("/lignes").map(item => ({
@@ -372,7 +386,7 @@ sap.ui.define([
                 codeTransac: ligne.codeTransac,
                 libelleTransac: ligne.libelleTransac,
                 montant: ligne.montant,
-                utilisateur: oData.utilisateur,
+                user: oData.user,
                 debutTraitement: formatDateTime(oData.debutTraitement),
                 finTraitement: formatDateTime(oData.finTraitement)
             }));
@@ -385,7 +399,7 @@ sap.ui.define([
                 { label: "Code du moyen de paiement", property: "codeTransac" },
                 { label: "Libellé Moyen de Paiement", property: "libelleTransac" },
                 { label: "Montants Réels", property: "montant" },
-                { label: "Utilisateur", property: "utilisateur" },
+                { label: "User", property: "user" },
                 { label: "Début du traitement", property: "debutTraitement" },
                 { label: "Fin du traitement", property: "finTraitement" }
             ];
